@@ -28,7 +28,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.CellUtil;
-import org.apache.hadoop.hbase.HBaseClassTestRule;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableName;
@@ -44,8 +43,6 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.spark.example.hbasecontext.JavaHBaseBulkDeleteExample;
 import org.apache.hadoop.hbase.testclassification.MediumTests;
-import org.apache.hadoop.hbase.testclassification.MiscTests;
-import org.apache.hadoop.hbase.tool.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
 import org.apache.spark.api.java.JavaRDD;
@@ -61,14 +58,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
-import org.apache.hbase.thirdparty.com.google.common.io.Files;
+import com.google.common.io.Files;
 
-@Category({MiscTests.class, MediumTests.class})
+@Category({MediumTests.class})
 public class TestJavaHBaseContext implements Serializable {
-
-  @ClassRule
-  public static final HBaseClassTestRule TIMEOUT =
-      HBaseClassTestRule.forClass(TestJavaHBaseContext.class);
 
   private transient JavaSparkContext jsc;
   HBaseTestingUtility htu;
@@ -299,182 +292,6 @@ public class TestJavaHBaseContext implements Serializable {
     Assert.assertEquals(stringJavaRDD.count(), 5);
   }
 
-  @Test
-  public void testBulkLoad() throws Exception {
-
-    Path output = htu.getDataTestDir("testBulkLoad");
-    // Add cell as String: "row,falmily,qualifier,value"
-    List<String> list= new ArrayList<String>();
-    // row1
-    list.add("1," + columnFamilyStr + ",b,1");
-    // row3
-    list.add("3," + columnFamilyStr + ",a,2");
-    list.add("3," + columnFamilyStr + ",b,1");
-    list.add("3," + columnFamilyStr1 + ",a,1");
-    //row2
-    list.add("2," + columnFamilyStr + ",a,3");
-    list.add("2," + columnFamilyStr + ",b,3");
-
-    JavaRDD<String> rdd = jsc.parallelize(list);
-
-    Configuration conf = htu.getConfiguration();
-    JavaHBaseContext hbaseContext = new JavaHBaseContext(jsc, conf);
-
-
-
-    hbaseContext.bulkLoad(rdd, TableName.valueOf(tableName), new BulkLoadFunction(),
-            output.toUri().getPath(), new HashMap<byte[], FamilyHFileWriteOptions>(), false,
-            HConstants.DEFAULT_MAX_FILE_SIZE);
-
-    try (Connection conn = ConnectionFactory.createConnection(conf);
-         Admin admin = conn.getAdmin()) {
-      Table table = conn.getTable(TableName.valueOf(tableName));
-      // Do bulk load
-      LoadIncrementalHFiles load = new LoadIncrementalHFiles(conf);
-      load.doBulkLoad(output, admin, table, conn.getRegionLocator(TableName.valueOf(tableName)));
-
-
-
-      // Check row1
-      List<Cell> cell1 = table.get(new Get(Bytes.toBytes("1"))).listCells();
-      Assert.assertEquals(cell1.size(), 1);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell1.get(0))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell1.get(0))), "b");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell1.get(0))), "1");
-
-      // Check row3
-      List<Cell> cell3 = table.get(new Get(Bytes.toBytes("3"))).listCells();
-      Assert.assertEquals(cell3.size(), 3);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell3.get(0))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell3.get(0))), "a");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell3.get(0))), "2");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell3.get(1))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell3.get(1))), "b");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell3.get(1))), "1");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell3.get(2))), columnFamilyStr1);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell3.get(2))), "a");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell3.get(2))), "1");
-
-      // Check row2
-      List<Cell> cell2 = table.get(new Get(Bytes.toBytes("2"))).listCells();
-      Assert.assertEquals(cell2.size(), 2);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell2.get(0))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell2.get(0))), "a");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell2.get(0))), "3");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell2.get(1))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell2.get(1))), "b");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell2.get(1))), "3");
-    }
-  }
-
-  @Test
-  public void testBulkLoadThinRows() throws Exception {
-    Path output = htu.getDataTestDir("testBulkLoadThinRows");
-    // because of the limitation of scala bulkLoadThinRows API
-    // we need to provide data as <row, all cells in that row>
-    List<List<String>> list= new ArrayList<List<String>>();
-    // row1
-    List<String> list1 = new ArrayList<String>();
-    list1.add("1," + columnFamilyStr + ",b,1");
-    list.add(list1);
-    // row3
-    List<String> list3 = new ArrayList<String>();
-    list3.add("3," + columnFamilyStr + ",a,2");
-    list3.add("3," + columnFamilyStr + ",b,1");
-    list3.add("3," + columnFamilyStr1 + ",a,1");
-    list.add(list3);
-    //row2
-    List<String> list2 = new ArrayList<String>();
-    list2.add("2," + columnFamilyStr + ",a,3");
-    list2.add("2," + columnFamilyStr + ",b,3");
-    list.add(list2);
-
-    JavaRDD<List<String>> rdd = jsc.parallelize(list);
-
-    Configuration conf = htu.getConfiguration();
-    JavaHBaseContext hbaseContext = new JavaHBaseContext(jsc, conf);
-
-    hbaseContext.bulkLoadThinRows(rdd, TableName.valueOf(tableName), new BulkLoadThinRowsFunction(),
-            output.toString(), new HashMap<byte[], FamilyHFileWriteOptions>(), false,
-            HConstants.DEFAULT_MAX_FILE_SIZE);
-
-
-    try (Connection conn = ConnectionFactory.createConnection(conf);
-         Admin admin = conn.getAdmin()) {
-      Table table = conn.getTable(TableName.valueOf(tableName));
-      // Do bulk load
-      LoadIncrementalHFiles load = new LoadIncrementalHFiles(conf);
-      load.doBulkLoad(output, admin, table, conn.getRegionLocator(TableName.valueOf(tableName)));
-
-      // Check row1
-      List<Cell> cell1 = table.get(new Get(Bytes.toBytes("1"))).listCells();
-      Assert.assertEquals(cell1.size(), 1);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell1.get(0))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell1.get(0))), "b");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell1.get(0))), "1");
-
-      // Check row3
-      List<Cell> cell3 = table.get(new Get(Bytes.toBytes("3"))).listCells();
-      Assert.assertEquals(cell3.size(), 3);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell3.get(0))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell3.get(0))), "a");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell3.get(0))), "2");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell3.get(1))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell3.get(1))), "b");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell3.get(1))), "1");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell3.get(2))), columnFamilyStr1);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell3.get(2))), "a");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell3.get(2))), "1");
-
-      // Check row2
-      List<Cell> cell2 = table.get(new Get(Bytes.toBytes("2"))).listCells();
-      Assert.assertEquals(cell2.size(), 2);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell2.get(0))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell2.get(0))), "a");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell2.get(0))), "3");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneFamily(cell2.get(1))), columnFamilyStr);
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneQualifier(cell2.get(1))), "b");
-      Assert.assertEquals(Bytes.toString(CellUtil.cloneValue(cell2.get(1))), "3");
-    }
-
-  }
-  public static class BulkLoadFunction
-          implements Function<String, Pair<KeyFamilyQualifier, byte[]>> {
-    @Override public Pair<KeyFamilyQualifier, byte[]> call(String v1) throws Exception {
-      if (v1 == null) {
-        return null;
-      }
-
-      String[] strs = v1.split(",");
-      if(strs.length != 4) {
-        return null;
-      }
-
-      KeyFamilyQualifier kfq = new KeyFamilyQualifier(Bytes.toBytes(strs[0]),
-              Bytes.toBytes(strs[1]), Bytes.toBytes(strs[2]));
-      return new Pair(kfq, Bytes.toBytes(strs[3]));
-    }
-  }
-
-  public static class BulkLoadThinRowsFunction
-          implements Function<List<String>, Pair<ByteArrayWrapper, FamiliesQualifiersValues>> {
-    @Override public Pair<ByteArrayWrapper, FamiliesQualifiersValues> call(List<String> list) {
-      if (list == null) {
-        return null;
-      }
-
-      ByteArrayWrapper rowKey = null;
-      FamiliesQualifiersValues fqv = new FamiliesQualifiersValues();
-      for (String cell : list) {
-        String[] strs = cell.split(",");
-        if (rowKey == null) {
-          rowKey = new ByteArrayWrapper(Bytes.toBytes(strs[0]));
-        }
-        fqv.add(Bytes.toBytes(strs[1]), Bytes.toBytes(strs[2]), Bytes.toBytes(strs[3]));
-      }
-      return new Pair(rowKey, fqv);
-    }
-  }
 
   public static class GetFunction implements Function<byte[], Get> {
 

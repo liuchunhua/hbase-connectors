@@ -24,27 +24,27 @@
   <parent>
     <groupId>org.apache.hbase.connectors</groupId>
     <artifactId>hbase-connectors</artifactId>
-    <version>${revision}</version>
+    <version>1.1.1</version>
     <relativePath>../</relativePath>
   </parent>
   <groupId>org.apache.hbase.connectors</groupId>
   <artifactId>spark</artifactId>
   <packaging>pom</packaging>
-  <version>${revision}</version>
+  <version>1.1.1</version>
   <name>Apache HBase - Spark</name>
   <description>Spark Connectors for Apache HBase</description>
   <modules>
     <module>hbase-spark</module>
-    <module>hbase-spark-it</module>
+    <!-- <module>hbase-spark-it</module> -->
   </modules>
   <properties>
     <protobuf.plugin.version>0.6.1</protobuf.plugin.version>
     <hbase-thirdparty.version>2.1.0</hbase-thirdparty.version>
     <jackson.version>2.9.2</jackson.version>
-    <spark.version>2.4.0</spark.version>
+    <spark.version>2.3.1</spark.version>
     <!-- The following version is in sync with Spark's choice
          Please take caution when this version is modified -->
-    <scala.version>2.11.12</scala.version>
+    <scala.version>2.11.8</scala.version>
     <scala.binary.version>2.11</scala.binary.version>
     <json4s.version>3.2.11</json4s.version>
   </properties>

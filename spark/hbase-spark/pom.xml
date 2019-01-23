@@ -23,7 +23,7 @@
   <parent>
     <groupId>org.apache.hbase.connectors</groupId>
     <artifactId>spark</artifactId>
-    <version>${revision}</version>
+    <version>1.1.1</version>
     <relativePath>../</relativePath>
   </parent>
   <groupId>org.apache.hbase.connectors.spark</groupId>
@@ -39,10 +39,10 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
     </dependency>
-    <dependency>
+    <!-- <dependency>
       <groupId>org.apache.hbase.thirdparty</groupId>
       <artifactId>hbase-shaded-miscellaneous</artifactId>
-    </dependency>
+    </dependency> -->
     <!-- Force import of Spark's servlet API for unit tests -->
     <dependency>
       <groupId>javax.servlet</groupId>
@@ -356,16 +356,16 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <dependency>
+    <!-- <dependency> -->
       <!-- This is needed. Test does remove test dir
            which is in hbase zk testing utility which is
            in this package. mvn dependency:analyze can't
            see this. -->
-      <groupId>org.apache.hbase</groupId>
+      <!-- <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-zookeeper</artifactId>
       <scope>test</scope>
       <type>test-jar</type>
-    </dependency>
+    </dependency> -->
     <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-protocol</artifactId>
@@ -400,10 +400,10 @@
       <scope>test</scope>
       <type>test-jar</type>
     </dependency>
-    <dependency>
+    <!-- <dependency>
       <groupId>org.apache.hbase</groupId>
       <artifactId>hbase-mapreduce</artifactId>
-    </dependency>
+    </dependency> -->
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>

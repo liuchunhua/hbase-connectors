@@ -111,6 +111,59 @@ public class SparkSQLPushDownFilter extends FilterBase{
   }
 
   @Override
+  public ReturnCode filterKeyValue(Cell c) throws IOException {
+
+    //If the map RowValueMap is empty then we need to populate
+    // the row key
+    if (columnToCurrentRowValueMap == null) {
+      columnToCurrentRowValueMap = new HashMap<>();
+      HashMap<ByteArrayComparable, String> qualifierColumnMap =
+              currentCellToColumnIndexMap.get(
+                      new ByteArrayComparable(rowKeyFamily, 0, rowKeyFamily.length));
+
+      if (qualifierColumnMap != null) {
+        String rowKeyColumnName =
+                qualifierColumnMap.get(
+                        new ByteArrayComparable(rowKeyQualifier, 0,
+                                rowKeyQualifier.length));
+        //Make sure that the rowKey is part of the where clause
+        if (rowKeyColumnName != null) {
+          columnToCurrentRowValueMap.put(rowKeyColumnName,
+                  new ByteArrayComparable(c.getRowArray(),
+                          c.getRowOffset(), c.getRowLength()));
+        }
+      }
+    }
+
+    //Always populate the column value into the RowValueMap
+    ByteArrayComparable currentFamilyByteComparable =
+            new ByteArrayComparable(c.getFamilyArray(),
+            c.getFamilyOffset(),
+            c.getFamilyLength());
+
+    HashMap<ByteArrayComparable, String> qualifierColumnMap =
+            currentCellToColumnIndexMap.get(
+                    currentFamilyByteComparable);
+
+    if (qualifierColumnMap != null) {
+
+      String columnName =
+              qualifierColumnMap.get(
+                      new ByteArrayComparable(c.getQualifierArray(),
+                              c.getQualifierOffset(),
+                              c.getQualifierLength()));
+
+      if (columnName != null) {
+        columnToCurrentRowValueMap.put(columnName,
+                new ByteArrayComparable(c.getValueArray(),
+                        c.getValueOffset(), c.getValueLength()));
+      }
+    }
+
+    return ReturnCode.INCLUDE;
+  }
+
+
   public ReturnCode filterCell(final Cell c) throws IOException {
 
     //If the map RowValueMap is empty then we need to populate
