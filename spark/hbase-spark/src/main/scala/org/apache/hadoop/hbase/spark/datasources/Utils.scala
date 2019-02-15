@@ -55,7 +55,7 @@ object Utils {
         case IntegerType => Bytes.toInt(src, offset)
         case LongType|TimestampType => Bytes.toLong(src, offset)
         case ShortType => Bytes.toShort(src, offset)
-        case StringType => toUTF8String(src, offset, length)
+        case StringType => toUTF8String(src, offset, length).toString
         case BinaryType =>
           val newArray = new Array[Byte](length)
           System.arraycopy(src, offset, newArray, 0, length)
@@ -84,8 +84,9 @@ object Utils {
         case data: Short => Bytes.toBytes(data)
         case data: UTF8String => data.getBytes
         case data: String => Bytes.toBytes(data)
+        case data: java.sql.Timestamp => Bytes.toBytes(data.getTime)
         // TODO: add more data type support
-        case _ => throw new Exception(s"unsupported data type ${field.dt}")
+        case _ => throw new Exception(s"unsupported data type ${input.getClass} of field ${field.colName}")
       }
     }
   }
