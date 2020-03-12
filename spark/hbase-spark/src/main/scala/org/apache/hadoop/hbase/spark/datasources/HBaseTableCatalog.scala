@@ -36,7 +36,7 @@ case class Field(
     sType: Option[String] = None,
     avroSchema: Option[String] = None,
     serdes: Option[SerDes]= None,
-    len: Int = -1) extends Logging {
+    len: Int = -1) extends Logging with Serializable {
   override def toString = s"$colName $cf $col"
   val isRowKey = cf == HBaseTableCatalog.rowKey
   var start: Int = _
