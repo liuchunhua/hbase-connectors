@@ -208,16 +208,25 @@ case class HBaseRelation (
     def convertToPut(row: Row) = {
       // construct bytes for row key
       val rowBytes = rkIdxedFields.map { case (x, y) =>
-        Utils.toBytes(row(x), y)
+        (y, Utils.toBytes(row(x), y))
       }
       val rLen = rowBytes.foldLeft(0) { case (x, y) =>
-        x + y.length
+        y._1.dt match {
+          case StringType =>
+            x + y._2.length + 1
+          case _ =>
+            x + y._2.length
+        }
       }
       val rBytes = new Array[Byte](rLen)
       var offset = 0
-      rowBytes.foreach { x =>
+      rowBytes.foreach { case (y, x) =>
         System.arraycopy(x, 0, rBytes, offset, x.length)
         offset += x.length
+        if (y.dt == StringType && offset < (rLen-1)) {
+            offset += 1
+            rBytes(offset) = HBaseTableCatalog.delimiter
+        }
       }
       val put = timestamp.fold(new Put(rBytes))(new Put(rBytes, _))
 
